@@ -15,22 +15,42 @@ import { StatusBar } from 'expo-status-bar';
 
 // Import Firebase functions (v9+ modular SDK)
 import { db } from '@/firebaseConfig'; // Importer Firestore DB
-import {addDoc, collection, getDocs} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
+import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
 import {Simulate} from "react-dom/test-utils";
 import reset = Simulate.reset;
 
-type ItemProps = { fName: string, lName: string, email: string, studentId: string };
+type ItemProps = {
+    id: string,
+    fName: string,
+    lName: string,
+    email: string,
+    studentId: string,
+    onEdit: (student: any) => void;
+    onDelete: (student: any) => void;
+};
 
-const Item = ({ fName, lName, email, studentId }: ItemProps) => (
+const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete }: ItemProps) => (
     <View style={styles.item}>
         <Text style={styles.title}>{`${fName} ${lName}`}</Text>
         <Text>{email}</Text>
         <Text>{studentId}</Text>
-        <FontAwesome6 name={"edit"} size={24} color={"black"} style={styles.editIcon}/>
-        <AntDesign name={"delete"} size={24} color={"black"} style={styles.deleteIcon}/>
+        <FontAwesome6
+            name={"edit"}
+            size={24}
+            color={"black"}
+            style={styles.editIcon}
+            onPress={() => onEdit({ id, fName, lName, email, studentId })}
+        />
+        <AntDesign
+            name={"delete"}
+            size={24}
+            color={"black"}
+            style={styles.deleteIcon}
+            onPress={() => onDelete({ id, fName, lName, email, studentId })}
+        />
     </View>
 );
 
@@ -40,6 +60,10 @@ const HelloWorldApp = () => {
     const [searchText, setSearchText] = useState<string>(''); // State for søketekst
     const [modalVisible, setModalVisible] = useState(false);
     const [savingStudent, setSavingStudent] = useState(false);
+    const [editStudent, setEditStudent] = useState(null);
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [studentDelete, setStudentDelete] = useState<any>(null);
+
 
     useEffect(() => {
         fetchStudents();
@@ -77,12 +101,17 @@ const HelloWorldApp = () => {
     };
 
     // Ny student form
-    const [newStudent, setNewStudent] = useState({
+    const [newStudent, setNewStudent] = useState<{
+        id?: string;  // Gjør id valgfritt
+        fName: string;
+        lName: string;
+        email: string;
+        studentId: string;
+    }>({
         fName: '',
         lName: '',
         email: '',
         studentId: '',
-
     });
 
     const handleInputChange = (field, value) => {
@@ -91,6 +120,18 @@ const HelloWorldApp = () => {
             [field]: value,
         }));
     };
+
+    const handleEditPress = (student) => {
+        setNewStudent(student);  // Fyll inn eksisterende data
+        setEditStudent(student);  // Marker at vi redigerer
+        setModalVisible(true);
+    };
+
+    const handleDeletePress = (student) => {
+        setStudentDelete(student);  // Sett den valgte studenten
+        setDeleteModalVisible(true);  // Vis slettemodal
+    };
+
 
     const resetForm = () => {
         setNewStudent({
@@ -102,8 +143,7 @@ const HelloWorldApp = () => {
     };
 
     const saveStudent = async () => {
-        // Validate form
-        if (newStudent.fName.trim() && !newStudent.lName.trim() || !newStudent.studentId.trim()) {
+        if (!newStudent.fName.trim() || !newStudent.lName.trim() || !newStudent.studentId.trim()) {
             Alert.alert("Missing information", "Please provide first name, last name, and student ID.");
             return;
         }
@@ -116,27 +156,45 @@ const HelloWorldApp = () => {
         try {
             setSavingStudent(true);
 
-            // Referanse til students collection
-            const studentsCollectionRef = collection(db, "students");
+            if (editStudent) {
+                // Oppdaterer eksisterende student
+                const { id, ...studentData } = newStudent; // Fjern 'id' fra oppdateringen
+                await updateDoc(doc(db, "students", id), studentData);
+            } else {
+                // Legg til ny student
+                const studentsCollectionRef = collection(db, "students");
+                await addDoc(studentsCollectionRef, newStudent);
+            }
 
-            // Legger til nytt student dokument
-            await addDoc(studentsCollectionRef, newStudent);
-
-            // Lukker modal og reset form
             setModalVisible(false);
             resetForm();
-
-            // Refresher studentlisten
+            setEditStudent(null);
             fetchStudents();
 
-            Alert.alert("Success", "Student added successfully.");
+            Alert.alert("Success", editStudent ? "Student updated successfully." : "Student added successfully.");
         } catch (error) {
-            console.error("Error adding student", error);
-            Alert.alert("Error", "Failed to add student, please try again.");
+            console.error("Error saving student", error);
+            Alert.alert("Error", "Failed to save student, please try again.");
         } finally {
             setSavingStudent(false);
         }
     };
+
+    const deleteStudent = async () => {
+        if (studentDelete) {
+            try {
+                // Sletter studenten fra Firestore
+                await deleteDoc(doc(db, "students", studentDelete.id));
+                setDeleteModalVisible(false);  // Skjul modal etter sletting
+                fetchStudents();  // Oppdater listen etter sletting
+                Alert.alert("Success", "Student deleted.");
+            } catch (error) {
+                Alert.alert("Error", "Failed to delete student.");
+            }
+        }
+    };
+
+
 
     if (loading) {
         return (
@@ -168,7 +226,7 @@ const HelloWorldApp = () => {
                     <Text style={styles.addButtonText}>+ Add Student</Text>
                 </TouchableOpacity>
 
-                {/* Add Student modal */}
+                {/* Modal for add/edit student */}
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -180,7 +238,9 @@ const HelloWorldApp = () => {
                         style={styles.modalContainer}
                     >
                         <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Add New Student</Text>
+                            <Text style={styles.modalTitle}>
+                                {editStudent ? "Edit Student" : "Add New Student"} {/*Viser edit eller add etter hva som ble trykket på*/}
+                            </Text>
 
                             <ScrollView style={styles.formContainer}>
                                 <Text style={styles.inputLabel}>First Name *</Text>
@@ -246,11 +306,62 @@ const HelloWorldApp = () => {
                     </KeyboardAvoidingView>
                 </Modal>
 
+                {/*Modal for sletting av studenter*/}
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={deleteModalVisible}
+                    onRequestClose={() => setDeleteModalVisible(false)}
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                        style={styles.modalContainer}
+                    >
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Confirm Deletion</Text>
+
+                            <Text style={styles.inputLabel}>Are you sure you want to delete this student?</Text>
+                            {studentDelete && (
+                                <View>
+                                    <Text>{`${studentDelete.fName} ${studentDelete.lName}`}</Text>
+                                    <Text>{studentDelete.email}</Text>
+                                    <Text>{studentDelete.studentId}</Text>
+                                </View>
+                            )}
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => setDeleteModalVisible(false)}  // Lukk modal
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.saveButton}
+                                    onPress={deleteStudent}  // Kall på slett-funksjonen
+                                >
+                                    <Text style={styles.saveButtonText}>Delete</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </Modal>
+
+
+
                 {/* FlatList med filtrerte data */}
                 <FlatList
                     data={filteredData}
                     renderItem={({ item }) => (
-                        <Item fName={item.fName} lName={item.lName} email={item.email} studentId={item.studentId} />
+                        <Item
+                            id={item.id}
+                            fName={item.fName}
+                            lName={item.lName}
+                            email={item.email}
+                            studentId={item.studentId}
+                            onEdit={handleEditPress}
+                            onDelete={handleDeletePress} />
                     )}
                     keyExtractor={item => item.id}
                     numColumns={1}
