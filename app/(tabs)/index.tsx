@@ -19,8 +19,8 @@ import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/f
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
-import {Simulate} from "react-dom/test-utils";
-import reset = Simulate.reset;
+//import {Simulate} from "react-dom/test-utils";
+//import reset = Simulate.reset;
 
 type ItemProps = {
     id: string,
