@@ -19,78 +19,75 @@ import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/f
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
+import barChart from 'react-native-chart-kit';
 //import {Simulate} from "react-dom/test-utils";
 //import reset = Simulate.reset;
 
 type ItemProps = {
     id: string,
-    fName: string,
-    lName: string,
-    email: string,
-    studentId: string,
-    onEdit: (student: any) => void;
-    onDelete: (student: any) => void;
+    name: string,
+    courseCode: string,
+    teacher: string,
+    onEdit: (subject: any) => void;
+    onDelete: (subject: any) => void;
 };
 
-const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete }: ItemProps) => (
+const Item = ({ id, name, teacher, courseCode, onEdit, onDelete }: ItemProps) => (
     <View style={styles.item}>
-        <Text style={styles.title}>{`${fName} ${lName}`}</Text>
-        <Text>{email}</Text>
-        <Text>{studentId}</Text>
+        <Text style={styles.title}>{`${courseCode} ${name}`}</Text>
+        <Text>{teacher}</Text>
         <FontAwesome6
             name={"edit"}
             size={24}
             color={"black"}
             style={styles.editIcon}
-            onPress={() => onEdit({ id, fName, lName, email, studentId })}
+            onPress={() => onEdit({ id, name, teacher, courseCode })}
         />
         <AntDesign
             name={"delete"}
             size={24}
             color={"black"}
             style={styles.deleteIcon}
-            onPress={() => onDelete({ id, fName, lName, email, studentId })}
+            onPress={() => onDelete({ id, name, teacher, courseCode})}
         />
     </View>
 );
 
-const HelloWorldApp = () => {
+const ManageCourseApp = () => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [searchText, setSearchText] = useState<string>(''); // State for søketekst
     const [modalVisible, setModalVisible] = useState(false);
-    const [savingStudent, setSavingStudent] = useState(false);
-    const [editStudent, setEditStudent] = useState(null);
+    const [savingSubject, setSavingSubject] = useState(false);
+    const [editSubject, setEditSubject] = useState(null);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-    const [studentDelete, setStudentDelete] = useState<any>(null);
+    const [subjectDelete, setSubjectDelete] = useState<any>(null);
 
 
     useEffect(() => {
-        fetchStudents();
+        fetchSubjects();
     }, []);
 
     const handleSearch = (text: string) => {
         setSearchText(text);
     };
 
-    // Filtrere dataene basert på fornavn og etternavn
+    // Filtrere dataene basert på kursets navn
     const filteredData = data.filter(
         (item) =>
-            item.fName.toLowerCase().includes(searchText.toLowerCase()) || // Søk på fornavn
-            item.lName.toLowerCase().includes(searchText.toLowerCase()) // Søk på etternavn
+            item.name.toLowerCase().includes(searchText.toLowerCase()) // Søk på course navn
     );
 
     // Henter studentdata
-    const fetchStudents = async () => {
+    const fetchSubjects = async () => {
         try {
             // Hent data fra Firestore
-            const querySnapshot = await getDocs(collection(db, 'students')); // Kall på Firestore
+            const querySnapshot = await getDocs(collection(db, 'subjects')); // Kall på Firestore
             const list = querySnapshot.docs.map((doc) => ({
                 id: doc.id,
-                fName: doc.data().fName,
-                lName: doc.data().lName,
-                email: doc.data().email,
-                studentId: doc.data().studentId,
+                name: doc.data().name,
+                teacher: doc.data().teacher,
+                courseCode: doc.data().courseCode,
             }));
             setData(list);
         } catch (error) {
@@ -100,101 +97,93 @@ const HelloWorldApp = () => {
         }
     };
 
-    // Ny student form
-    const [newStudent, setNewStudent] = useState<{
+    // Ny subject form
+    const [newSubject, setNewSubject] = useState<{
         id?: string;  // Gjør id valgfritt
-        fName: string;
-        lName: string;
-        email: string;
-        studentId: string;
+        name: string;
+        teacher: string;
+        courseCode: string;
     }>({
-        fName: '',
-        lName: '',
-        email: '',
-        studentId: '',
+        name: '',
+        teacher: '',
+        courseCode: '',
     });
 
     const handleInputChange = (field, value) => {
-        setNewStudent(prev => ({
+        setNewSubject(prev => ({
             ...prev,
             [field]: value,
         }));
     };
 
-    const handleEditPress = (student) => {
-        setNewStudent(student);  // Fyll inn eksisterende data
-        setEditStudent(student);  // Marker at vi redigerer
+    const handleEditPress = (subject) => {
+        setNewSubject(subject);  // Fyll inn eksisterende data
+        setEditSubject(subject);  // Marker at vi redigerer
         setModalVisible(true);
     };
 
-    const handleDeletePress = (student) => {
-        setStudentDelete(student);  // Sett den valgte studenten
+    const handleDeletePress = (subject) => {
+        setSubjectDelete(subject);  // Sett det valgte faget
         setDeleteModalVisible(true);  // Vis slettemodal
     };
 
 
     const resetForm = () => {
-        setNewStudent({
-            fName: '',
-            lName: '',
-            email: '',
-            studentId: ''
+        setNewSubject({
+            name: '',
+            teacher: '',
+            courseCode: ''
         });
     };
 
-    const saveStudent = async () => {
-        if (!newStudent.fName.trim() || !newStudent.lName.trim() || !newStudent.studentId.trim()) {
-            Alert.alert("Missing information", "Please provide first name, last name, and student ID.");
-            return;
-        }
-
-        if (newStudent.email.trim() && !newStudent.email.includes('@')) {
-            Alert.alert("Invalid E-mail", "Please provide a valid E-mail address.");
+    const saveSubject = async () => {
+        if (!newSubject.name.trim() || !newSubject.teacher.trim() || !newSubject.courseCode.trim()) {
+            Alert.alert("Missing information", "Please provide name, teacher, and course code.");
             return;
         }
 
         try {
-            setSavingStudent(true);
+            setSavingSubject(true);
 
-            if (editStudent) {
-                // Oppdaterer eksisterende student
-                const { id, ...studentData } = newStudent; // Fjern 'id' fra oppdateringen
-                await updateDoc(doc(db, "students", id), studentData);
+            if (editSubject) {
+                // Oppdaterer eksisterende fag
+                const { id, ...subjectData } = newSubject; // Fjern 'id' fra oppdateringen
+                await updateDoc(doc(db, "subjects", id), subjectData);
             } else {
-                // Legg til ny student
-                const studentsCollectionRef = collection(db, "students");
-                await addDoc(studentsCollectionRef, newStudent);
+                // Legg til nytt fag
+                const subjectsCollectionRef = collection(db, "subjects");
+                await addDoc(subjectsCollectionRef, newSubject);
             }
 
             setModalVisible(false);
             resetForm();
-            setEditStudent(null);
-            fetchStudents();
+            setEditSubject(null);
+            fetchSubjects();
 
-            Alert.alert("Success", editStudent ? "Student updated successfully." : "Student added successfully.");
+            Alert.alert("Success", editSubject ? "Subject updated successfully." : "Subject added successfully.");
         } catch (error) {
-            console.error("Error saving student", error);
-            Alert.alert("Error", "Failed to save student, please try again.");
+            console.error("Error saving subject", error);
+            Alert.alert("Error", "Failed to save subject, please try again.");
         } finally {
-            setSavingStudent(false);
+            setSavingSubject(false);
         }
     };
 
-    const deleteStudent = async () => {
-        if (studentDelete) {
+    const deleteSubject = async () => {
+        if (subjectDelete) {
             try {
-                // Sletter studenten fra Firestore
-                await deleteDoc(doc(db, "students", studentDelete.id));
+                // Sletter faget fra Firestore
+                await deleteDoc(doc(db, "subjects", subjectDelete.id));
                 setDeleteModalVisible(false);  // Skjul modal etter sletting
-                fetchStudents();  // Oppdater listen etter sletting
-                Alert.alert("Success", "Student deleted.");
+                fetchSubjects();  // Oppdater listen etter sletting
+                Alert.alert("Success", "Subject deleted.");
             } catch (error) {
-                Alert.alert("Error", "Failed to delete student.");
+                Alert.alert("Error", "Failed to delete subject.");
             }
         }
     };
 
-
+//-------------------------------SE GJENNOM HTML SEKSJONEN--------------------------------------\\
 
     if (loading) {
         return (
@@ -223,10 +212,10 @@ const HelloWorldApp = () => {
                     onPress={() => setModalVisible(true)}
                 >
 
-                    <Text style={styles.addButtonText}>+ Add Student</Text>
+                    <Text style={styles.addButtonText}>+ Add Subject</Text>
                 </TouchableOpacity>
 
-                {/* Modal for add/edit student */}
+                {/* Modal for add/edit subject */}
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -239,43 +228,33 @@ const HelloWorldApp = () => {
                     >
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>
-                                {editStudent ? "Edit Student" : "Add New Student"} {/*Viser edit eller add etter hva som ble trykket på*/}
+                                {editSubject ? "Edit Subject" : "Add New Subject"} {/*Viser edit eller add etter hva som ble trykket på*/}
                             </Text>
 
                             <ScrollView style={styles.formContainer}>
-                                <Text style={styles.inputLabel}>First Name *</Text>
+                                <Text style={styles.inputLabel}>Name *</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Enter first name"
-                                    value={newStudent.fName}
-                                    onChangeText={(text) => handleInputChange('fName', text)}
+                                    placeholder="Enter course name"
+                                    value={newSubject.name}
+                                    onChangeText={(text) => handleInputChange('name', text)}
                                 />
 
-                                <Text style={styles.inputLabel}>Last Name *</Text>
+                                <Text style={styles.inputLabel}>Course Code *</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Enter last name"
-                                    value={newStudent.lName}
-                                    onChangeText={(text) => handleInputChange('lName', text)}
+                                    placeholder="Enter course code"
+                                    value={newSubject.courseCode}
+                                    onChangeText={(text) => handleInputChange('courseCode', text)}
                                 />
 
-                                <Text style={styles.inputLabel}>Student ID *</Text>
+                                <Text style={styles.inputLabel}>Teacher *</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Enter student ID"
-                                    value={newStudent.studentId}
-                                    onChangeText={(text) => handleInputChange('studentId', text)}
+                                    placeholder="Enter teacher"
+                                    value={newSubject.teacher}
+                                    onChangeText={(text) => handleInputChange('teacher', text)}
                                     keyboardType="number-pad"
-                                />
-
-                                <Text style={styles.inputLabel}>Email</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter email address"
-                                    value={newStudent.email}
-                                    onChangeText={(text) => handleInputChange('email', text)}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
                                 />
                             </ScrollView>
 
@@ -292,10 +271,10 @@ const HelloWorldApp = () => {
 
                                 <TouchableOpacity
                                     style={styles.saveButton}
-                                    onPress={saveStudent}
-                                    disabled={savingStudent}
+                                    onPress={saveSubject}
+                                    disabled={savingSubject}
                                 >
-                                    {savingStudent ? (
+                                    {savingSubject ? (
                                         <ActivityIndicator size="small" color="white" />
                                     ) : (
                                         <Text style={styles.saveButtonText}>Save</Text>
@@ -320,12 +299,12 @@ const HelloWorldApp = () => {
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>Confirm Deletion</Text>
 
-                            <Text style={styles.inputLabel}>Are you sure you want to delete this student?</Text>
-                            {studentDelete && (
+                            <Text style={styles.inputLabel}>Are you sure you want to delete this subject?</Text>
+                            {subjectDelete && (
                                 <View>
-                                    <Text>{`${studentDelete.fName} ${studentDelete.lName}`}</Text>
-                                    <Text>{studentDelete.email}</Text>
-                                    <Text>{studentDelete.studentId}</Text>
+                                    <Text>{`${subjectDelete.name}`}</Text>
+                                    <Text>{subjectDelete.courseCode}</Text>
+                                    <Text>{subjectDelete.teacher}</Text>
                                 </View>
                             )}
 
@@ -339,7 +318,7 @@ const HelloWorldApp = () => {
 
                                 <TouchableOpacity
                                     style={styles.saveButton}
-                                    onPress={deleteStudent}  // Kall på slett-funksjonen
+                                    onPress={deleteSubject}  // Kall på slett-funksjonen
                                 >
                                     <Text style={styles.saveButtonText}>Delete</Text>
                                 </TouchableOpacity>
@@ -356,10 +335,9 @@ const HelloWorldApp = () => {
                     renderItem={({ item }) => (
                         <Item
                             id={item.id}
-                            fName={item.fName}
-                            lName={item.lName}
-                            email={item.email}
-                            studentId={item.studentId}
+                            name={item.name}
+                            courseCode={item.courseCode}
+                            teacher={item.teacher}
                             onEdit={handleEditPress}
                             onDelete={handleDeletePress} />
                     )}
@@ -491,4 +469,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default HelloWorldApp;
+export default ManageCourseApp;
