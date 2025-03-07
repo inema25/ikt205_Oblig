@@ -19,7 +19,7 @@ import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/f
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
-import barChart from 'react-native-chart-kit';
+import barChart from 'react-native-chart-kit'; // npm i react-native-chart-kit
 //import {Simulate} from "react-dom/test-utils";
 //import reset = Simulate.reset;
 
