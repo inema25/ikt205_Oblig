@@ -196,8 +196,21 @@ const ManageStudentApp = () => {
     const deleteStudent = async () => {
         if (studentDelete) {
             try {
+                // Henter karakterene til studenten
+                const gradesRef = collection(db, "students", studentDelete.id, "grades");
+                const gradesSnapshot = await getDocs(gradesRef);
+
+                // Sletter hvert grade dokument
+                const deletePromises = gradesSnapshot.docs.map(gradeDoc =>
+                    deleteDoc(doc(db, "students", studentDelete.id, "grades", gradeDoc.id))
+                );
+
+                // Vent for alle slettinger av karakterer til å fullføre
+                await Promise.all(deletePromises);
+
                 // Sletter studenten fra Firestore
                 await deleteDoc(doc(db, "students", studentDelete.id));
+
                 setDeleteModalVisible(false);  // Skjul modal etter sletting
                 fetchStudents();  // Oppdater listen etter sletting
                 Alert.alert("Success", "Student deleted.");

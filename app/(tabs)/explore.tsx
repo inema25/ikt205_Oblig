@@ -15,7 +15,7 @@ import { StatusBar, Platform } from 'react-native';
 
 // Import Firebase functions (v9+ modular SDK)
 import { db } from '@/firebaseConfig'; // Importer Firestore DB
-import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
+import {addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
@@ -172,8 +172,33 @@ const ManageCourseApp = () => {
     const deleteSubject = async () => {
         if (subjectDelete) {
             try {
+                // Hent alle studenter
+                const studentsRef = collection(db, "students");
+                const studentsSnapshot = await getDocs(studentsRef);
+
+                // Iterer gjennom studentene for å finne og slette karakterer i dette faget
+                const deleteGradePromises = studentsSnapshot.docs.map(async (studentDoc) => {
+                    const studentId = studentDoc.id;
+
+                    // Hent karakterer for dette faget under hver student
+                    const gradesRef = collection(db, "students", studentId, "grades");
+                    const q = query(gradesRef, where("subject", "==", subjectDelete.courseCode));
+                    const gradesSnapshot = await getDocs(q);
+
+                    // Slett karakterene for dette faget
+                    const deletePromises = gradesSnapshot.docs.map(gradeDoc =>
+                        deleteDoc(doc(db, "students", studentDoc.id, "grades", gradeDoc.id))
+                    );
+
+                    return Promise.all(deletePromises);
+                });
+
+                // Vent for alle slettinger av karakterer til å fullføre
+                await Promise.all(deleteGradePromises);
+
                 // Sletter faget fra Firestore
                 await deleteDoc(doc(db, "subjects", subjectDelete.id));
+
                 setDeleteModalVisible(false);  // Skjul modal etter sletting
                 fetchSubjects();  // Oppdater listen etter sletting
                 Alert.alert("Success", "Subject deleted.");
@@ -203,7 +228,7 @@ const ManageCourseApp = () => {
                     style={styles.input}
                     value={searchText}
                     onChangeText={handleSearch}
-                    placeholder="Søk etter student..."
+                    placeholder="Search course..."
                 />
 
                 {/* Add knapp */}
@@ -339,6 +364,7 @@ const ManageCourseApp = () => {
                             teacher={item.teacher}
                             onEdit={handleEditPress}
                             onDelete={handleDeletePress} />
+
                     )}
                     keyExtractor={item => item.id}
                     numColumns={1}
