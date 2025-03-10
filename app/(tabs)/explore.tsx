@@ -8,10 +8,10 @@ import {
     SafeAreaView,
     TextInput,
     TouchableOpacity,
-    Modal, KeyboardAvoidingView, Platform, Animated, Alert
+    Modal, KeyboardAvoidingView, Animated, Alert
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, Platform } from 'react-native';
 
 // Import Firebase functions (v9+ modular SDK)
 import { db } from '@/firebaseConfig'; // Importer Firestore DB
@@ -59,7 +59,7 @@ const ManageCourseApp = () => {
     const [searchText, setSearchText] = useState<string>(''); // State for søketekst
     const [modalVisible, setModalVisible] = useState(false);
     const [savingSubject, setSavingSubject] = useState(false);
-    const [editSubject, setEditSubject] = useState(null);
+    const [editSubject, setEditSubject] = useState<ItemProps | null>(null);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [subjectDelete, setSubjectDelete] = useState<any>(null);
 
@@ -109,20 +109,20 @@ const ManageCourseApp = () => {
         courseCode: '',
     });
 
-    const handleInputChange = (field, value) => {
+    const handleInputChange = (field: keyof typeof newSubject, value: string) => {
         setNewSubject(prev => ({
             ...prev,
             [field]: value,
         }));
     };
 
-    const handleEditPress = (subject) => {
+    const handleEditPress = (subject: ItemProps) => {
         setNewSubject(subject);  // Fyll inn eksisterende data
         setEditSubject(subject);  // Marker at vi redigerer
         setModalVisible(true);
     };
 
-    const handleDeletePress = (subject) => {
+    const handleDeletePress = (subject: ItemProps) => {
         setSubjectDelete(subject);  // Sett det valgte faget
         setDeleteModalVisible(true);  // Vis slettemodal
     };
@@ -145,10 +145,10 @@ const ManageCourseApp = () => {
         try {
             setSavingSubject(true);
 
-            if (editSubject) {
+            if (editSubject && newSubject.id) {
                 // Oppdaterer eksisterende fag
                 const { id, ...subjectData } = newSubject; // Fjern 'id' fra oppdateringen
-                await updateDoc(doc(db, "subjects", id), subjectData);
+                await updateDoc(doc(db, "subjects", newSubject.id), subjectData);
             } else {
                 // Legg til nytt fag
                 const subjectsCollectionRef = collection(db, "subjects");
@@ -352,7 +352,7 @@ const ManageCourseApp = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        marginTop: StatusBar.currentHeight || 0,
+        marginTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
         paddingHorizontal: 16,
     },
     item: {

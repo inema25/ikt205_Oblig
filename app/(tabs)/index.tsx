@@ -11,7 +11,7 @@ import {
     Modal, KeyboardAvoidingView, Platform, Animated, Alert
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'react-native';
 
 // Import Firebase functions (v9+ modular SDK)
 import { db } from '@/firebaseConfig'; // Importer Firestore DB
@@ -54,13 +54,13 @@ const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete }: ItemProp
     </View>
 );
 
-const HelloWorldApp = () => {
+const ManageStudentApp = () => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [searchText, setSearchText] = useState<string>(''); // State for søketekst
     const [modalVisible, setModalVisible] = useState(false);
     const [savingStudent, setSavingStudent] = useState(false);
-    const [editStudent, setEditStudent] = useState(null);
+    const [editStudent, setEditStudent] = useState<ItemProps | null>(null);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [studentDelete, setStudentDelete] = useState<any>(null);
 
@@ -114,20 +114,20 @@ const HelloWorldApp = () => {
         studentId: '',
     });
 
-    const handleInputChange = (field, value) => {
+    const handleInputChange = (field: 'fName' | 'lName' | 'email' | 'studentId', value: string) => {
         setNewStudent(prev => ({
             ...prev,
             [field]: value,
         }));
     };
 
-    const handleEditPress = (student) => {
+    const handleEditPress = (student: ItemProps) => {
         setNewStudent(student);  // Fyll inn eksisterende data
         setEditStudent(student);  // Marker at vi redigerer
         setModalVisible(true);
     };
 
-    const handleDeletePress = (student) => {
+    const handleDeletePress = (student: ItemProps) => {
         setStudentDelete(student);  // Sett den valgte studenten
         setDeleteModalVisible(true);  // Vis slettemodal
     };
@@ -156,10 +156,10 @@ const HelloWorldApp = () => {
         try {
             setSavingStudent(true);
 
-            if (editStudent) {
+            if (editStudent && editStudent.id) {
                 // Oppdaterer eksisterende student
                 const { id, ...studentData } = newStudent; // Fjern 'id' fra oppdateringen
-                await updateDoc(doc(db, "students", id), studentData);
+                await updateDoc(doc(db, "students", editStudent.id), studentData);
             } else {
                 // Legg til ny student
                 const studentsCollectionRef = collection(db, "students");
@@ -491,4 +491,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default HelloWorldApp;
+export default ManageStudentApp;
