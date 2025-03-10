@@ -15,7 +15,7 @@ import { StatusBar, Platform } from 'react-native';
 
 // Import Firebase functions (v9+ modular SDK)
 import { db } from '@/firebaseConfig'; // Importer Firestore DB
-import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
+import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
@@ -254,7 +254,6 @@ const ManageCourseApp = () => {
                                     placeholder="Enter teacher"
                                     value={newSubject.teacher}
                                     onChangeText={(text) => handleInputChange('teacher', text)}
-                                    keyboardType="number-pad"
                                 />
                             </ScrollView>
 
