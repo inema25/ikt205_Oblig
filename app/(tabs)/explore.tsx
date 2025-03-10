@@ -19,7 +19,7 @@ import {addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where} fr
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
-import barChart from 'react-native-chart-kit'; // npm i react-native-chart-kit
+import { BarChart } from 'react-native-chart-kit'; // npm i react-native-chart-kit
 //import {Simulate} from "react-dom/test-utils";
 //import reset = Simulate.reset;
 
@@ -30,28 +30,83 @@ type ItemProps = {
     teacher: string,
     onEdit: (subject: any) => void;
     onDelete: (subject: any) => void;
+    gradeDistribution?: {[courseCode: string]: {[grade: string]: number}};
 };
 
-const Item = ({ id, name, teacher, courseCode, onEdit, onDelete }: ItemProps) => (
-    <View style={styles.item}>
-        <Text style={styles.title}>{`${courseCode} ${name}`}</Text>
-        <Text>{teacher}</Text>
-        <FontAwesome6
-            name={"edit"}
-            size={24}
-            color={"black"}
-            style={styles.editIcon}
-            onPress={() => onEdit({ id, name, teacher, courseCode })}
-        />
-        <AntDesign
-            name={"delete"}
-            size={24}
-            color={"black"}
-            style={styles.deleteIcon}
-            onPress={() => onDelete({ id, name, teacher, courseCode})}
-        />
-    </View>
-);
+const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistribution }: ItemProps) => {
+    // Create a safe way to access grade values with fallbacks
+    const getGradeValue = (grade: string): number => {
+        if (gradeDistribution &&
+            gradeDistribution[courseCode] &&
+            gradeDistribution[courseCode][grade] !== undefined) {
+            return gradeDistribution[courseCode][grade];
+        }
+        return 0;
+    };
+
+    return (
+        <View style={styles.item}>
+            <Text style={styles.title}>{`${courseCode} ${name}`}</Text>
+            <Text>{teacher}</Text>
+
+            {gradeDistribution && gradeDistribution[courseCode] && (
+                <View style={styles.chartContainer}>
+                    <Text style={styles.chartTitle}>Grade Distribution</Text>
+                    <BarChart
+                        data={{
+                            labels: ['A', 'B', 'C', 'D', 'E', 'F'],
+                            datasets: [
+                                {
+                                    data: [
+                                        getGradeValue('A'),
+                                        getGradeValue('B'),
+                                        getGradeValue('C'),
+                                        getGradeValue('D'),
+                                        getGradeValue('E'),
+                                        getGradeValue('F')
+                                    ]
+                                }
+                            ]
+                        }}
+                        width={300}
+                        height={180}
+                        yAxisSuffix=""
+                        chartConfig={{
+                            backgroundColor: '#ffffff',
+                            backgroundGradientFrom: '#ffffff',
+                            backgroundGradientTo: '#ffffff',
+                            decimalPlaces: 0,
+                            color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
+                            yAxisInterval: 1, // each y-axis interval will be 1 unit
+                            style: {
+                                borderRadius: 16
+                            }
+                        }}
+                        style={{
+                            marginVertical: 8,
+                            borderRadius: 16
+                        }}
+                    />
+                </View>
+            )}
+
+            <FontAwesome6
+                name={"edit"}
+                size={24}
+                color={"black"}
+                style={styles.editIcon}
+                onPress={() => onEdit({ id, name, teacher, courseCode })}
+            />
+            <AntDesign
+                name={"delete"}
+                size={24}
+                color={"black"}
+                style={styles.deleteIcon}
+                onPress={() => onDelete({ id, name, teacher, courseCode})}
+            />
+        </View>
+    );
+};
 
 const ManageCourseApp = () => {
     const [data, setData] = useState<any[]>([]);
@@ -62,10 +117,12 @@ const ManageCourseApp = () => {
     const [editSubject, setEditSubject] = useState<ItemProps | null>(null);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [subjectDelete, setSubjectDelete] = useState<any>(null);
+    const [gradeDistributions, setGradeDistributions] = useState<{[key: string]: {[key: string]: number}}>({});
 
 
     useEffect(() => {
         fetchSubjects();
+        fetchGradeDistributions();
     }, []);
 
     const handleSearch = (text: string) => {
@@ -94,6 +151,58 @@ const ManageCourseApp = () => {
             console.error('Feil ved henting av data fra Firestore:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Henter og kalkulerer karakterfordelingen
+    const fetchGradeDistributions = async () => {
+        try {
+            //Henter først alle subjects
+            const subjectsSnapshot = await getDocs(collection(db, 'subjects'));
+            const subjectData = subjectsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                courseCode: doc.data().courseCode
+            }));
+
+            //Henter alle studentene
+            const studentsSnapshot = await getDocs(collection(db, 'students'));
+
+            // Initialiserer fordelings-objektet
+            const distributions: { [key: string]: { [key: string]: number } } = {};
+
+            // Initialiserer med 0 for alle mulige karakterer for hvert fag
+            subjectData.forEach(subject => {
+                distributions[subject.courseCode] = {
+                    'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0, 'F': 0
+                };
+            });
+
+            // Prosesserer hver students karakter
+            const studentPromises = studentsSnapshot.docs.map(async (studentDoc) => {
+                const studentId = studentDoc.id;
+
+                // Henter alle karakterene for denne studenten
+                const gradesSnapshot = await getDocs(collection(db, 'students', studentId, 'grades'));
+
+                // Prosesserer hver karakter
+                gradesSnapshot.docs.forEach(gradeDoc => {
+                    const gradeData = gradeDoc.data();
+                    const subject = gradeData.subject;
+                    const grade = gradeData.grade.toUpperCase();
+
+                    // Ikrementerer tellingen for denne karakteren i dette faget
+                    if (distributions[subject] && ['A', 'B', 'C', 'D', 'E', 'F'].includes(grade)) {
+                        distributions[subject][grade]++;
+                    }
+                });
+            });
+
+            // Venter for all prosessering av studentkarakterer til å bli ferdig
+            await Promise.all(studentPromises);
+
+            setGradeDistributions(distributions);
+        } catch (error) {
+            console.error('Error fetching grades', error);
         }
     };
 
@@ -201,11 +310,23 @@ const ManageCourseApp = () => {
 
                 setDeleteModalVisible(false);  // Skjul modal etter sletting
                 fetchSubjects();  // Oppdater listen etter sletting
+                fetchGradeDistributions();
                 Alert.alert("Success", "Subject deleted.");
             } catch (error) {
                 Alert.alert("Error", "Failed to delete subject.");
             }
         }
+    };
+
+    const chartConfig = {
+        backgroundGradientFrom: "#1E2923",
+        backgroundGradientFromOpacity: 0,
+        backgroundGradientTo: "#08130D",
+        backgroundGradientToOpacity: 0.5,
+        color: (opacity = 1) => `rgba(26, 255, 146, ${opacity})`,
+        strokeWidth: 2, // optional, default 3
+        barPercentage: 0.5,
+        useShadowColorFromDataset: false // optional
     };
 
 //-------------------------------SE GJENNOM HTML SEKSJONEN--------------------------------------\\
@@ -363,8 +484,8 @@ const ManageCourseApp = () => {
                             courseCode={item.courseCode}
                             teacher={item.teacher}
                             onEdit={handleEditPress}
-                            onDelete={handleDeletePress} />
-
+                            onDelete={handleDeletePress}
+                            gradeDistribution={gradeDistributions} />
                     )}
                     keyExtractor={item => item.id}
                     numColumns={1}
@@ -491,6 +612,15 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: '600',
         fontSize: 16,
+    },
+    chartContainer: {
+        marginTop: 15,
+        alignItems: 'center',
+    },
+    chartTitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginBottom: 5,
     },
 });
 
