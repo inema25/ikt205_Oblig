@@ -44,9 +44,36 @@ const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistributi
         return 0;
     };
 
+    //Finner maksverdien for y-aksen
+    const calculateYAxisMax = () => {
+        if (!gradeDistribution || !gradeDistribution[courseCode]) return 5;
+
+        const grades = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const values = grades.map(grade => getGradeValue(grade));
+        const maxValue = Math.max(...values);
+
+        // Return max value + 5 (or at least 5 if the max is very small)
+        return Math.max(maxValue + 5, 5);
+    };
+
+
     return (
         <View style={styles.item}>
-            <Text style={styles.title}>{`${courseCode} ${name}`}</Text>
+            <Text style={styles.title}>{`${courseCode} ${name}`}<FontAwesome6
+                name={"edit"}
+                size={24}
+                color={"black"}
+                style={styles.editIcon}
+                onPress={() => onEdit({ id, name, teacher, courseCode })}
+            />
+                <AntDesign
+                    name={"delete"}
+                    size={24}
+                    color={"black"}
+                    style={styles.deleteIcon}
+                    onPress={() => onDelete({ id, name, teacher, courseCode})}
+                /></Text>
+
             <Text>{teacher}</Text>
 
             {gradeDistribution && gradeDistribution[courseCode] && (
@@ -77,33 +104,36 @@ const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistributi
                             backgroundGradientTo: '#ffffff',
                             decimalPlaces: 0,
                             color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
-                            yAxisInterval: 1, // each y-axis interval will be 1 unit
-                            style: {
-                                borderRadius: 16
-                            }
+                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                            propsForLabels: {
+                                fontSize: 12,
+                                fontWeight: 'bold',
+                            },
+                            propsForBackgroundLines: {
+                                strokeDasharray: '', // Use solid lines
+                            },
+                            yAxisInterval: 1,
+                            barPercentage: 0.7, // Makes bars wider
+                            // Set a fixed maximum for the y-axis
+                            count: 6, // Ensure all 6 grade labels are shown
+                            formatYLabel: (value) => Math.floor(value).toString(), // Integer y-values
+                            // Create a Y-axis with appropriate max value
+                            yAxisMax: calculateYAxisMax(),
                         }}
                         style={{
                             marginVertical: 8,
-                            borderRadius: 16
+                            borderRadius: 16,
+                            paddingRight: 0, // Reduce right padding to show more of the chart
                         }}
+                        showValuesOnTopOfBars={true} // Optional: shows the values on top of bars
+                        fromZero={true} // Start Y axis from zero
+                        withHorizontalLabels={true}
+                        withVerticalLabels={true}
+                        verticalLabelRotation={0} // Keep labels horizontal
+                        horizontalLabelRotation={0}
                     />
                 </View>
             )}
-
-            <FontAwesome6
-                name={"edit"}
-                size={24}
-                color={"black"}
-                style={styles.editIcon}
-                onPress={() => onEdit({ id, name, teacher, courseCode })}
-            />
-            <AntDesign
-                name={"delete"}
-                size={24}
-                color={"black"}
-                style={styles.deleteIcon}
-                onPress={() => onDelete({ id, name, teacher, courseCode})}
-            />
         </View>
     );
 };
@@ -511,6 +541,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 18,
         fontWeight: 'bold',
+        flex: 1,
     },
     input: {
         height: 40,
