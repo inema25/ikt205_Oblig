@@ -59,84 +59,99 @@ const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistributi
 
     return (
         <View style={styles.item}>
-            <Text style={styles.title}>{`${courseCode} ${name}`}<FontAwesome6
-                name={"edit"}
-                size={24}
-                color={"black"}
-                style={styles.editIcon}
-                onPress={() => onEdit({ id, name, teacher, courseCode })}
-            />
-                <AntDesign
-                    name={"delete"}
-                    size={24}
-                    color={"black"}
-                    style={styles.deleteIcon}
-                    onPress={() => onDelete({ id, name, teacher, courseCode})}
-                /></Text>
 
-            <Text>{teacher}</Text>
-
-            {gradeDistribution && gradeDistribution[courseCode] && (
-                <View style={styles.chartContainer}>
-                    <Text style={styles.chartTitle}>Grade Distribution</Text>
-                    <BarChart
-                        data={{
-                            labels: ['A', 'B', 'C', 'D', 'E', 'F'],
-                            datasets: [
-                                {
-                                    data: [
-                                        getGradeValue('A'),
-                                        getGradeValue('B'),
-                                        getGradeValue('C'),
-                                        getGradeValue('D'),
-                                        getGradeValue('E'),
-                                        getGradeValue('F')
-                                    ]
-                                }
-                            ]
-                        }}
-                        width={300}
-                        height={180}
-                        yAxisSuffix=""
-                        chartConfig={{
-                            backgroundColor: '#ffffff',
-                            backgroundGradientFrom: '#ffffff',
-                            backgroundGradientTo: '#ffffff',
-                            decimalPlaces: 0,
-                            color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
-                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                            propsForLabels: {
-                                fontSize: 12,
-                                fontWeight: 'bold',
-                            },
-                            propsForBackgroundLines: {
-                                strokeDasharray: '', // Use solid lines
-                            },
-                            yAxisInterval: 1,
-                            barPercentage: 0.7, // Makes bars wider
-                            // Set a fixed maximum for the y-axis
-                            count: 6, // Ensure all 6 grade labels are shown
-                            formatYLabel: (value) => Math.floor(value).toString(), // Integer y-values
-                            // Create a Y-axis with appropriate max value
-                            yAxisMax: calculateYAxisMax(),
-                        }}
-                        style={{
-                            marginVertical: 8,
-                            borderRadius: 16,
-                            paddingRight: 0, // Reduce right padding to show more of the chart
-                        }}
-                        showValuesOnTopOfBars={true} // Optional: shows the values on top of bars
-                        fromZero={true} // Start Y axis from zero
-                        withHorizontalLabels={true}
-                        withVerticalLabels={true}
-                        verticalLabelRotation={0} // Keep labels horizontal
-                        horizontalLabelRotation={0}
+            {/* Første rad i flexboks: tittel og knapper */}
+            <View style={styles.row}>
+                <View style={styles.boxTitle}>
+                    <Text style={styles.title}>{`${courseCode} ${name}`}</Text>
+                </View>
+                <View style={styles.boxButtons}>
+                    <FontAwesome6
+                        name={"edit"}
+                        size={24}
+                        color={"black"}
+                        onPress={() => onEdit({ id, name, teacher, courseCode })}
                     />
+                    <AntDesign
+                        name={"delete"}
+                        size={24}
+                        color={"black"}
+                        onPress={() => onDelete({ id, name, teacher, courseCode })}
+                    />
+                </View>
+            </View>
+
+            {/* Andre rad i flexboks: tekst */}
+            <View style={styles.boxText}>
+                <Text>{teacher}</Text>
+            </View>
+
+
+            {/* Tredje rad i flexboks: barchart */}
+            {gradeDistribution && gradeDistribution[courseCode] && (
+                <View style={styles.boxChart}>
+                    <View style={styles.chartContainer}>
+                        <Text style={styles.chartTitle}>Grade Distribution</Text>
+                        <BarChart
+                            data={{
+                                labels: ['A', 'B', 'C', 'D', 'E', 'F'],
+                                datasets: [
+                                    {
+                                        data: [
+                                            getGradeValue('A'),
+                                            getGradeValue('B'),
+                                            getGradeValue('C'),
+                                            getGradeValue('D'),
+                                            getGradeValue('E'),
+                                            getGradeValue('F')
+                                        ]
+                                    }
+                                ]
+                            }}
+                            width={300}
+                            height={180}
+                            yAxisSuffix=""
+                            chartConfig={{
+                                backgroundColor: '#ffffff',
+                                backgroundGradientFrom: '#ffffff',
+                                backgroundGradientTo: '#ffffff',
+                                decimalPlaces: 0,
+                                color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
+                                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                propsForLabels: {
+                                    fontSize: 12,
+                                    fontWeight: 'bold',
+                                },
+                                propsForBackgroundLines: {
+                                    strokeDasharray: '', // Use solid lines
+                                },
+                                yAxisInterval: 1,
+                                barPercentage: 0.7, // Makes bars wider
+                                // Set a fixed maximum for the y-axis
+                                count: 6, // Ensure all 6 grade labels are shown
+                                formatYLabel: (value) => Math.floor(value).toString(), // Integer y-values
+                                // Create a Y-axis with appropriate max value
+                                yAxisMax: calculateYAxisMax(),
+                            }}
+                            style={{
+                                marginVertical: 8,
+                                borderRadius: 16,
+                                paddingRight: 0, // Reduce right padding to show more of the chart
+                            }}
+                            showValuesOnTopOfBars={true} // Optional: shows the values on top of bars
+                            fromZero={true} // Start Y axis from zero
+                            withHorizontalLabels={true}
+                            withVerticalLabels={true}
+                            verticalLabelRotation={0} // Keep labels horizontal
+                            horizontalLabelRotation={0}
+                        />
+                    </View>
                 </View>
             )}
         </View>
     );
 };
+
 
 const ManageCourseApp = () => {
     const [data, setData] = useState<any[]>([]);
@@ -532,11 +547,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     item: {
-        backgroundColor: '#f9c2ff',
+        backgroundColor: 'white',
         padding: 20,
         marginVertical: 8,
         marginHorizontal: 16,
         flex: 1,
+        borderWidth: 1,
+        borderColor: 'grey',
     },
     title: {
         fontSize: 18,
@@ -550,27 +567,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         borderColor: '#ccc',
         borderRadius: 4,
-    },
-    // Styling for the edit icon
-    deleteIcon: {
-        position: 'absolute',  // Place the icon absolutely within the container
-        right: 10,  // 10 units from the right
-        top: '50%',  // Vertically centered
-        transform: [{ translateY: -12 }],  // Fine-tune the vertical position
-    },
-    // Styling for the delete icon
-    editIcon: {
-        position: 'absolute',  // Place the icon absolutely within the container
-        right: 40,  // 40 units from the right, ensuring no overlap with the edit icon
-        top: '50%',  // Vertically centered
-        transform: [{ translateY: -12 }],  // Fine-tune the vertical position
+        margin: 15,
     },
     // Styling for add knappen
     addButton: {
         backgroundColor: '#0066cc',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        padding: 15,
         borderRadius: 4,
+        margin: 15,
     },
     addButtonText: {
         color: 'white',
@@ -652,6 +656,28 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         marginBottom: 5,
+    },
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    boxTitle: {
+        flex: 1,
+    },
+    boxButtons: {
+        flexDirection: 'row',
+        gap: 10,
+        alignSelf: 'flex-end',
+    },
+    boxText: {
+        marginBottom: 10,
+    },
+    boxChart: {
+        padding: 10,
+        alignItems: 'center',
+        marginTop: 15,
     },
 });
 

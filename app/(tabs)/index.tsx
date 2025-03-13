@@ -35,30 +35,47 @@ type ItemProps = {
 
 const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete, onAddGrade }: ItemProps) => (
     <View style={styles.item}>
-        <Text style={styles.title}>{`${fName} ${lName}`}</Text>
-        <Text>{email}</Text>
-        <Text>{studentId}</Text>
-        <View style={styles.buttonContainer}>
-            <TouchableOpacity
-                style={styles.gradeButton}
-                onPress={() => onAddGrade({ id, fName, lName, email, studentId })}>
-                <Text style={styles.gradeButtonText}>Add Grade</Text>
-            </TouchableOpacity>
+        {/*Første rad i flexboks*/}
+        <View style={styles.row}>
+            <View style={styles.boxTitle}>
+                <Text style={styles.title}>{`${fName} ${lName}`}</Text>
+            </View>
+
+            <View style={styles.boxButtons}>
+                <FontAwesome6
+                    name={"edit"}
+                    size={24}
+                    color={"black"}
+                    onPress={() => onEdit({ id, fName, lName, email, studentId })}
+                />
+                <AntDesign
+                    name={"delete"}
+                    size={24}
+                    color={"black"}
+                    onPress={() => onDelete({ id, fName, lName, email, studentId })}
+                />
+            </View>
+
         </View>
-        <FontAwesome6
-            name={"edit"}
-            size={24}
-            color={"black"}
-            style={styles.editIcon}
-            onPress={() => onEdit({ id, fName, lName, email, studentId })}
-        />
-        <AntDesign
-            name={"delete"}
-            size={24}
-            color={"black"}
-            style={styles.deleteIcon}
-            onPress={() => onDelete({ id, fName, lName, email, studentId })}
-        />
+
+        {/* Andre rad i flexboks */}
+        <View style={styles.boxText}>
+            <Text>{email}</Text>
+            <Text>{studentId}</Text>
+        </View>
+
+        {/* Tredje rad i flexboks*/}
+        <View style={styles.boxAddButton}>
+            <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                    style={styles.gradeButton}
+                    onPress={() => onAddGrade({ id, fName, lName, email, studentId })}>
+                    <Text style={styles.gradeButtonText}>Add Grade</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+
+
     </View>
 );
 
@@ -558,11 +575,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     item: {
-        backgroundColor: '#f9c2ff',
+        backgroundColor: 'white',
         padding: 20,
         marginVertical: 8,
         marginHorizontal: 16,
         flex: 1,
+        borderWidth: 1,
+        borderColor: 'grey',
     },
     title: {
         fontSize: 18,
@@ -570,32 +589,18 @@ const styles = StyleSheet.create({
     },
     input: {
         height: 40,
-        marginVertical: 12,
         borderWidth: 1,
         paddingHorizontal: 10,
         borderColor: '#ccc',
         borderRadius: 4,
-    },
-    // Styling for the edit icon
-    deleteIcon: {
-        position: 'absolute',  // Place the icon absolutely within the container
-        right: 10,  // 10 units from the right
-        top: '50%',  // Vertically centered
-        transform: [{ translateY: -12 }],  // Fine-tune the vertical position
-    },
-    // Styling for the delete icon
-    editIcon: {
-        position: 'absolute',  // Place the icon absolutely within the container
-        right: 40,  // 40 units from the right, ensuring no overlap with the edit icon
-        top: '50%',  // Vertically centered
-        transform: [{ translateY: -12 }],  // Fine-tune the vertical position
+        margin: 15,
     },
     // Styling for add knappen
     addButton: {
         backgroundColor: '#0066cc',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        padding: 15,
         borderRadius: 4,
+        margin: 15,
     },
     addButtonText: {
         color: 'white',
@@ -671,8 +676,7 @@ const styles = StyleSheet.create({
     },
     gradeButton: {
         backgroundColor: '#28a745',
-        paddingVertical: 6,
-        paddingHorizontal: 12,
+        padding: 10,
         borderRadius: 4,
         marginTop: 8,
     },
@@ -697,6 +701,26 @@ const styles = StyleSheet.create({
     },
     selectedSubject: {
         backgroundColor: '#e6f7ff',
+    },
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    boxTitle: {
+        flex: 1,
+    },
+    boxButtons: {
+        alignSelf: 'flex-end',
+        flexDirection: 'row',
+        gap: 10,
+    },
+    boxText: {
+        marginBottom: 10,
+    },
+    boxAddButton: {
+        alignItems: 'center',
     }
 });
 
