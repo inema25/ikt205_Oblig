@@ -8,20 +8,32 @@ import {
     SafeAreaView,
     TextInput,
     TouchableOpacity,
-    Modal, KeyboardAvoidingView, Animated, Alert
+    Modal,
+    KeyboardAvoidingView,
+    Animated,
+    Alert,
+    StatusBar,
+    Platform
 } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar, Platform } from 'react-native';
 
-// Import Firebase functions (v9+ modular SDK)
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import { db } from '@/firebaseConfig'; // Importer Firestore DB
-import {addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
+import {addDoc,
+        collection,
+        deleteDoc,
+        doc,
+        getDocs,
+        query,
+        updateDoc,
+        where} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
+
 import {FontAwesome6} from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
-import { BarChart } from 'react-native-chart-kit'; // npm i react-native-chart-kit
-//import {Simulate} from "react-dom/test-utils";
-//import reset = Simulate.reset;
+import { BarChart } from 'react-native-chart-kit';
+import {useFocusEffect} from "@react-navigation/native"; // npm i react-native-chart-kit
+
 
 type ItemProps = {
     id: string,
@@ -34,7 +46,6 @@ type ItemProps = {
 };
 
 const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistribution }: ItemProps) => {
-    // Create a safe way to access grade values with fallbacks
     const getGradeValue = (grade: string): number => {
         if (gradeDistribution &&
             gradeDistribution[courseCode] &&
@@ -52,7 +63,6 @@ const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistributi
         const values = grades.map(grade => getGradeValue(grade));
         const maxValue = Math.max(...values);
 
-        // Return max value + 5 (or at least 5 if the max is very small)
         return Math.max(maxValue + 5, 5);
     };
 
@@ -110,6 +120,7 @@ const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistributi
                             }}
                             width={300}
                             height={180}
+                            yAxisLabel=""
                             yAxisSuffix=""
                             chartConfig={{
                                 backgroundColor: '#ffffff',
@@ -123,26 +134,22 @@ const Item = ({ id, name, teacher, courseCode, onEdit, onDelete, gradeDistributi
                                     fontWeight: 'bold',
                                 },
                                 propsForBackgroundLines: {
-                                    strokeDasharray: '', // Use solid lines
+                                    strokeDasharray: '',
                                 },
-                                yAxisInterval: 1,
-                                barPercentage: 0.7, // Makes bars wider
-                                // Set a fixed maximum for the y-axis
-                                count: 6, // Ensure all 6 grade labels are shown
-                                formatYLabel: (value) => Math.floor(value).toString(), // Integer y-values
-                                // Create a Y-axis with appropriate max value
+                                barPercentage: 0.7,
+                                count: 6,
                                 yAxisMax: calculateYAxisMax(),
                             }}
                             style={{
                                 marginVertical: 8,
                                 borderRadius: 16,
-                                paddingRight: 0, // Reduce right padding to show more of the chart
+                                paddingRight: 0,
                             }}
-                            showValuesOnTopOfBars={true} // Optional: shows the values on top of bars
-                            fromZero={true} // Start Y axis from zero
+                            showValuesOnTopOfBars={true}
+                            fromZero={true}
                             withHorizontalLabels={true}
                             withVerticalLabels={true}
-                            verticalLabelRotation={0} // Keep labels horizontal
+                            verticalLabelRotation={0}
                             horizontalLabelRotation={0}
                         />
                     </View>
@@ -170,6 +177,12 @@ const ManageCourseApp = () => {
         fetchGradeDistributions();
     }, []);
 
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchGradeDistributions();
+            return () => {};
+        }, [])
+    );
     const handleSearch = (text: string) => {
         setSearchText(text);
     };
@@ -193,7 +206,7 @@ const ManageCourseApp = () => {
             }));
             setData(list);
         } catch (error) {
-            console.error('Feil ved henting av data fra Firestore:', error);
+            console.error('Error fetching data from Firestore:', error);
         } finally {
             setLoading(false);
         }
@@ -235,16 +248,14 @@ const ManageCourseApp = () => {
                     const subject = gradeData.subject;
                     const grade = gradeData.grade.toUpperCase();
 
-                    // Ikrementerer tellingen for denne karakteren i dette faget
+                    // Inkrementerer tellingen for denne karakteren i dette faget
                     if (distributions[subject] && ['A', 'B', 'C', 'D', 'E', 'F'].includes(grade)) {
                         distributions[subject][grade]++;
                     }
                 });
             });
 
-            // Venter for all prosessering av studentkarakterer til å bli ferdig
             await Promise.all(studentPromises);
-
             setGradeDistributions(distributions);
         } catch (error) {
             console.error('Error fetching grades', error);
@@ -312,7 +323,9 @@ const ManageCourseApp = () => {
             setModalVisible(false);
             resetForm();
             setEditSubject(null);
-            fetchSubjects();
+
+            await fetchSubjects();
+            await fetchGradeDistributions();
 
             Alert.alert("Success", editSubject ? "Subject updated successfully." : "Subject added successfully.");
         } catch (error) {
@@ -347,7 +360,6 @@ const ManageCourseApp = () => {
                     return Promise.all(deletePromises);
                 });
 
-                // Vent for alle slettinger av karakterer til å fullføre
                 await Promise.all(deleteGradePromises);
 
                 // Sletter faget fra Firestore
@@ -363,18 +375,18 @@ const ManageCourseApp = () => {
         }
     };
 
-    const chartConfig = {
+    /*const chartConfig = {
         backgroundGradientFrom: "#1E2923",
         backgroundGradientFromOpacity: 0,
         backgroundGradientTo: "#08130D",
         backgroundGradientToOpacity: 0.5,
         color: (opacity = 1) => `rgba(26, 255, 146, ${opacity})`,
-        strokeWidth: 2, // optional, default 3
+        strokeWidth: 2,
         barPercentage: 0.5,
-        useShadowColorFromDataset: false // optional
-    };
+        useShadowColorFromDataset: false
+    };*/
 
-//-------------------------------SE GJENNOM HTML SEKSJONEN--------------------------------------\\
+//--------------------------------------------------\\
 
     if (loading) {
         return (

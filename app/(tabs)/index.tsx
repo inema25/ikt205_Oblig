@@ -8,32 +8,41 @@ import {
     SafeAreaView,
     TextInput,
     TouchableOpacity,
-    Modal, KeyboardAvoidingView, Platform, Animated, Alert
+    Modal,
+    KeyboardAvoidingView,
+    Platform,
+    Animated,
+    Alert,
+    StatusBar
 } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'react-native';
 
-// Import Firebase functions (v9+ modular SDK)
-import { db } from '@/firebaseConfig'; // Importer Firestore DB
-import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc, query, where} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
-import {FontAwesome6} from "@expo/vector-icons";
+import { db } from '@/firebaseConfig'; // Importerer Firestore DB
+import {addDoc,
+        collection,
+        deleteDoc,
+        doc,
+        getDocs,
+        updateDoc,
+        query,
+        where} from 'firebase/firestore'; // Importer nødvendige Firestore-funksjoner
+
+import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { FontAwesome6 } from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
 import ScrollView = Animated.ScrollView;
-//import {Simulate} from "react-dom/test-utils";
-//import reset = Simulate.reset;
 
 type ItemProps = {
     id: string,
     fName: string,
     lName: string,
     email: string,
-    studentId: string,
     onEdit: (student: any) => void;
     onDelete: (student: any) => void;
     onAddGrade: (student: any) => void;
 };
 
-const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete, onAddGrade }: ItemProps) => (
+const Item = ({ id, fName, lName, email, onEdit, onDelete, onAddGrade }: ItemProps) => (
     <View style={styles.item}>
         {/*Første rad i flexboks*/}
         <View style={styles.row}>
@@ -46,13 +55,13 @@ const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete, onAddGrade
                     name={"edit"}
                     size={24}
                     color={"black"}
-                    onPress={() => onEdit({ id, fName, lName, email, studentId })}
+                    onPress={() => onEdit({ id, fName, lName, email })}
                 />
                 <AntDesign
                     name={"delete"}
                     size={24}
                     color={"black"}
-                    onPress={() => onDelete({ id, fName, lName, email, studentId })}
+                    onPress={() => onDelete({ id, fName, lName, email })}
                 />
             </View>
 
@@ -61,7 +70,6 @@ const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete, onAddGrade
         {/* Andre rad i flexboks */}
         <View style={styles.boxText}>
             <Text>{email}</Text>
-            <Text>{studentId}</Text>
         </View>
 
         {/* Tredje rad i flexboks*/}
@@ -69,7 +77,7 @@ const Item = ({ id, fName, lName, email, studentId, onEdit, onDelete, onAddGrade
             <View style={styles.buttonContainer}>
                 <TouchableOpacity
                     style={styles.gradeButton}
-                    onPress={() => onAddGrade({ id, fName, lName, email, studentId })}>
+                    onPress={() => onAddGrade({ id, fName, lName, email})}>
                     <Text style={styles.gradeButtonText}>Add Grade</Text>
                 </TouchableOpacity>
             </View>
@@ -99,6 +107,14 @@ const ManageStudentApp = () => {
         fetchStudents();
     }, []);
 
+    // Henter fag når amn navigerer til Student Management tab
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchSubjects();
+            return () => {};
+        }, [])
+    );
+
     const handleSearch = (text: string) => {
         setSearchText(text);
     };
@@ -120,11 +136,10 @@ const ManageStudentApp = () => {
                 fName: doc.data().fName,
                 lName: doc.data().lName,
                 email: doc.data().email,
-                studentId: doc.data().studentId,
             }));
             setData(list);
         } catch (error) {
-            console.error('Feil ved henting av data fra Firestore:', error);
+            console.error('Error fetching data from Firestore:', error);
         } finally {
             setLoading(false);
         }
@@ -136,15 +151,14 @@ const ManageStudentApp = () => {
         fName: string;
         lName: string;
         email: string;
-        studentId: string;
     }>({
         fName: '',
         lName: '',
         email: '',
-        studentId: '',
     });
 
-    const handleInputChange = (field: 'fName' | 'lName' | 'email' | 'studentId', value: string) => {
+    // Håndterer endringer i inputfeltene, og lagrer
+    const handleInputChange = (field: 'fName' | 'lName' | 'email', value: string) => {
         setNewStudent(prev => ({
             ...prev,
             [field]: value,
@@ -167,14 +181,13 @@ const ManageStudentApp = () => {
         setNewStudent({
             fName: '',
             lName: '',
-            email: '',
-            studentId: ''
+            email: ''
         });
     };
 
     const saveStudent = async () => {
-        if (!newStudent.fName.trim() || !newStudent.lName.trim() || !newStudent.studentId.trim()) {
-            Alert.alert("Missing information", "Please provide first name, last name, and student ID.");
+        if (!newStudent.fName.trim() || !newStudent.lName.trim()) {
+            Alert.alert("Missing information", "Please provide first name and last name.");
             return;
         }
 
@@ -199,7 +212,8 @@ const ManageStudentApp = () => {
             setModalVisible(false);
             resetForm();
             setEditStudent(null);
-            fetchStudents();
+
+            await fetchStudents();
 
             Alert.alert("Success", editStudent ? "Student updated successfully." : "Student added successfully.");
         } catch (error) {
@@ -237,8 +251,7 @@ const ManageStudentApp = () => {
         }
     };
 
-    //--------------------\\
-    // Add this function to fetch subjects
+    // Hente fag for å legge til karakter
     const fetchSubjects = async () => {
         try {
             const querySnapshot = await getDocs(collection(db, 'subjects'));
@@ -254,22 +267,21 @@ const ManageStudentApp = () => {
         }
     };
 
-// Update your useEffect to call fetchSubjects
-    useEffect(() => {
+    /*useEffect(() => {
         fetchStudents();
         fetchSubjects();
-    }, []);
+    }, []);*/
 
-// Add function to handle opening the grade modal
     const handleAddGrade = (student: any) => {
         setCurrentStudent(student);
         setGradeModalVisible(true);
         setSelectedSubject('');
         setGradeValue('');
     };
-// Helper function to convert letter grades to numeric values for comparison
-    const gradeToValue = (grade) => {
-        const gradeMap = {
+
+// Hjelpefunksjon for å konvertere bokstavkarakterer til tall-verdier
+    const gradeToValue = (grade: string): number => {
+        const gradeMap: {[key: string]: number} = {
             'A': 5,
             'B': 4,
             'C': 3,
@@ -277,10 +289,12 @@ const ManageStudentApp = () => {
             'E': 1,
             'F': 0
         };
-        return gradeMap[grade.toUpperCase()] ?? -1; // Return -1 for invalid grades
+        const upperGrade = grade.toUpperCase();
+        return (upperGrade in gradeMap) ? gradeMap[upperGrade] : -1;
     };
 
-// Modified saveGrade function to check for existing grades
+
+// Funksjon for å sjekke for eksisterende karakter og lagre ny karakter
     const saveGrade = async () => {
         if (!selectedSubject || !gradeValue || !currentStudent) {
             Alert.alert('Missing Information', 'Please select a subject and enter a grade');
@@ -288,32 +302,27 @@ const ManageStudentApp = () => {
         }
 
         try {
-            // Reference to the grades subcollection for this student
-            const gradeRef = collection(db, 'students', currentStudent.id, 'grades');
 
-            // Query to check if a grade already exists for this subject
+            const gradeRef = collection(db, 'students', currentStudent.id, 'grades');
             const q = query(gradeRef, where("subject", "==", selectedSubject));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
-                // Grade exists for this subject
                 const existingGradeDoc = querySnapshot.docs[0];
                 const existingGrade = existingGradeDoc.data().grade;
 
-                // Compare grades (higher grade value is better)
+                // Sammenligner ny karakter med eksisterende karakter
                 if (gradeToValue(gradeValue) > gradeToValue(existingGrade)) {
-                    // New grade is higher, update the existing document
                     await updateDoc(doc(db, 'students', currentStudent.id, 'grades', existingGradeDoc.id), {
                         grade: gradeValue,
                         dateModified: new Date()
                     });
                     Alert.alert('Success', 'Grade updated to higher score');
                 } else {
-                    // New grade is not higher
                     Alert.alert('No Change', 'The new grade is not higher than the existing grade');
                 }
             } else {
-                // No grade exists for this subject, add a new one
+                // Legger til ny karakter hvis den ikke finnes
                 await addDoc(gradeRef, {
                     subject: selectedSubject,
                     grade: gradeValue,
@@ -329,8 +338,8 @@ const ManageStudentApp = () => {
         }
     };
 
-    //--------------------\\
 
+    //--------------------\\
 
 
     if (loading) {
@@ -351,7 +360,7 @@ const ManageStudentApp = () => {
                     style={styles.input}
                     value={searchText}
                     onChangeText={handleSearch}
-                    placeholder="Søk etter student..."
+                    placeholder="Search student..."
                 />
 
                 {/* Add knapp */}
@@ -394,15 +403,6 @@ const ManageStudentApp = () => {
                                     placeholder="Enter last name"
                                     value={newStudent.lName}
                                     onChangeText={(text) => handleInputChange('lName', text)}
-                                />
-
-                                <Text style={styles.inputLabel}>Student ID *</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter student ID"
-                                    value={newStudent.studentId}
-                                    onChangeText={(text) => handleInputChange('studentId', text)}
-                                    keyboardType="number-pad"
                                 />
 
                                 <Text style={styles.inputLabel}>Email</Text>
@@ -555,7 +555,6 @@ const ManageStudentApp = () => {
                             fName={item.fName}
                             lName={item.lName}
                             email={item.email}
-                            studentId={item.studentId}
                             onEdit={handleEditPress}
                             onDelete={handleDeletePress}
                             onAddGrade={handleAddGrade}/>
